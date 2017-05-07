@@ -42,24 +42,14 @@ func apiRequest(requestParams TranslateApiRequest) string {
 	phraseToTranslate := url.QueryEscape(requestParams.Phrase)
 
 	resp, requestError := http.Get(requestParams.ApiUrl + "?key=" + requestParams.ApiKey + "&lang=" + requestParams.Lang + "&text=" + phraseToTranslate)
-
-	if requestError != nil {
-		notifySend(requestError.Error())
-	}
-
+	notifyIfErr(requestError)
 	defer resp.Body.Close()
 
 	body, ioError := ioutil.ReadAll(resp.Body)
-
-	if ioError != nil {
-		notifySend(ioError.Error())
-	}
+	notifyIfErr(ioError)
 
 	unMarshalError := json.Unmarshal(body, &apiResponse)
-
-	if unMarshalError != nil {
-		notifySend(unMarshalError.Error())
-	}
+	notifyIfErr(unMarshalError)
 
 	return strings.Join(apiResponse.Text, "\n")
 }
