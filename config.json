@@ -1,0 +1,5 @@
+{
+  "ApiKey": "trnsl.1.1.20161028T214536Z.e4ee95b3a5a57e20.6cf997cd1d39c117d1b90db5a6bbf90f22c893e4",
+  "ApiUrl": "https://translate.yandex.net/api/v1.5/tr.json/translate",
+  "DefaultTranslateDirection": "en-ru"
+}

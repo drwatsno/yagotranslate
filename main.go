@@ -17,19 +17,28 @@ type TranslateApiResponse struct {
 	Text []string
 }
 
-type YandexConfig struct {
-	apiKey string
+type TranslateApiRequest struct {
+	ApiUrl string
+	ApiKey string
+	Lang string
+	Phrase string
 }
 
-func apiRequest(apiKey, lang, phraseToTranslate string) string {
+type YandexConfig struct {
+	ApiKey string
+	ApiUrl string
+	DefaultTranslateDirection string
+}
+
+func apiRequest(requestParams TranslateApiRequest) string {
 	var apiResponse TranslateApiResponse
 
-	phraseToTranslate = url.QueryEscape(phraseToTranslate)
+	phraseToTranslate := url.QueryEscape(requestParams.Phrase)
 
-	resp, requestError := http.Get("https://translate.yandex.net/api/v1.5/tr.json/translate?key=" + apiKey + "&lang=" + lang + "&text=" + phraseToTranslate)
+	resp, requestError := http.Get(requestParams.ApiUrl + "?key=" + requestParams.ApiKey + "&lang=" + requestParams.Lang + "&text=" + phraseToTranslate)
 
 	if requestError != nil {
-		log.Fatal(requestError)
+		notifySend(requestError.Error())
 	}
 
 	defer resp.Body.Close()
@@ -37,21 +46,31 @@ func apiRequest(apiKey, lang, phraseToTranslate string) string {
 	body, ioError := ioutil.ReadAll(resp.Body)
 
 	if ioError != nil {
-		log.Fatal(ioError)
+		notifySend(ioError.Error())
 	}
 
 	unMarshalError := json.Unmarshal(body, &apiResponse)
 
 	if unMarshalError != nil {
-		log.Fatal(unMarshalError)
+		notifySend(unMarshalError.Error())
 	}
 
 	return strings.Join(apiResponse.Text, "\n")
 }
 
 func getConfig() YandexConfig {
-	config := YandexConfig{
-		apiKey: "trnsl.1.1.20161028T214536Z.e4ee95b3a5a57e20.6cf997cd1d39c117d1b90db5a6bbf90f22c893e4",
+	var config YandexConfig
+
+	configData, err := ioutil.ReadFile("config.json")
+
+	if err != nil {
+		notifySend(err.Error())
+	}
+
+	unMarshalError := json.Unmarshal(configData, &config)
+
+	if unMarshalError != nil {
+		notifySend(unMarshalError.Error())
 	}
 
 	return config
@@ -65,14 +84,14 @@ func getSelectedText() string {
 	err := cmdXclip.Run()
 
 	if err != nil {
-		log.Fatal(err)
+		notifySend(err.Error())
 	}
 
 	return out.String()
 }
 
-func notifySend(translatedText *string) {
-	cmdNotify := exec.Command("notify-send", "Yandex Translate", *translatedText)
+func notifySend(message string) {
+	cmdNotify := exec.Command("notify-send", "Yandex Translate", message)
 	notifyRunErr := cmdNotify.Run()
 
 	if notifyRunErr != nil {
@@ -83,14 +102,17 @@ func notifySend(translatedText *string) {
 func main() {
 
 	config := getConfig()
-
 	selectedText := getSelectedText()
-
-	lang := flag.String("lang","en-ru","Translate direction")
-
+	lang := flag.String("lang",config.DefaultTranslateDirection,"Translate direction")
 	flag.Parse()
 
-	translatedText := apiRequest(config.apiKey, *lang, selectedText)
+	requestParams := TranslateApiRequest{
+		config.ApiUrl,
+		config.ApiKey,
+		*lang,
+		selectedText,
+	}
 
-	notifySend(&translatedText)
+	translatedText := apiRequest(requestParams)
+	notifySend(translatedText)
 }
