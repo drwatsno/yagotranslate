@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"strings"
 	"net/url"
+	"os/user"
 )
 
 type TranslateApiResponse struct {
@@ -27,7 +28,12 @@ type TranslateApiRequest struct {
 type YandexConfig struct {
 	ApiKey string
 	ApiUrl string
-	DefaultTranslateDirection string
+}
+
+func notifyIfErr(err error)  {
+	if err != nil {
+		notifySend(err.Error())
+	}
 }
 
 func apiRequest(requestParams TranslateApiRequest) string {
@@ -58,20 +64,14 @@ func apiRequest(requestParams TranslateApiRequest) string {
 	return strings.Join(apiResponse.Text, "\n")
 }
 
-func getConfig() YandexConfig {
+func getConfig(fileName string) YandexConfig {
 	var config YandexConfig
 
-	configData, err := ioutil.ReadFile("config.json")
-
-	if err != nil {
-		notifySend(err.Error())
-	}
+	configData, ioError := ioutil.ReadFile(fileName)
+	notifyIfErr(ioError)
 
 	unMarshalError := json.Unmarshal(configData, &config)
-
-	if unMarshalError != nil {
-		notifySend(unMarshalError.Error())
-	}
+	notifyIfErr(unMarshalError)
 
 	return config
 }
@@ -82,10 +82,7 @@ func getSelectedText() string {
 
 	cmdXclip.Stdout = &out
 	err := cmdXclip.Run()
-
-	if err != nil {
-		notifySend(err.Error())
-	}
+	notifyIfErr(err)
 
 	return out.String()
 }
@@ -101,16 +98,21 @@ func notifySend(message string) {
 
 func main() {
 
-	config := getConfig()
-	selectedText := getSelectedText()
-	lang := flag.String("lang",config.DefaultTranslateDirection,"Translate direction")
+	usr, getUserError := user.Current()
+
+	notifyIfErr(getUserError)
+
+	lang := flag.String("lang", "en-ru","Translate direction")
+	configFileName := flag.String("config", usr.HomeDir + "/.yagotranslate/config.json", "Config file name location")
 	flag.Parse()
+
+	config := getConfig(*configFileName)
 
 	requestParams := TranslateApiRequest{
 		config.ApiUrl,
 		config.ApiKey,
 		*lang,
-		selectedText,
+		getSelectedText(),
 	}
 
 	translatedText := apiRequest(requestParams)
