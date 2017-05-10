@@ -28,7 +28,6 @@ type YandexConfig struct {
 	ApiKey string
 	ApiUrl string
 }
-
 type InputArguments struct {
 	Lang string
 	ConfigFileName string

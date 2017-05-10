@@ -1,11 +1,12 @@
 # yagotranslate
 Translate selected text, and show it via notify-send
 
-#Usage
+## Usage
 
 yatranslate [params]
 
-params:
+##### params:
 
--lang=<from-to> - Translate direction (Default - en-ru, can be changed in config.json)
--config=<destination> - Config file destination, default to ~/.yagotranslate/config.json
+**-lang=<from-to>** - Translate direction (Default - en-ru, can be changed in config.json)
+
+**-config=<destination>** - Config file destination, default to ~/.yagotranslate/config.json
