@@ -17,23 +17,49 @@ type TranslateApiResponse struct {
 	Lang string
 	Text []string
 }
-
 type TranslateApiRequest struct {
 	ApiUrl string
 	ApiKey string
 	Lang string
 	Phrase string
 }
-
 type YandexConfig struct {
 	ApiKey string
 	ApiUrl string
 }
 
-func notifyIfErr(err error)  {
-	if err != nil {
-		notifySend(err.Error())
+type InputArguments struct {
+	Lang string
+	ConfigFileName string
+}
+
+func main() {
+	arguments := getInputArguments()
+	config := getConfig(arguments.ConfigFileName)
+
+	requestParams := TranslateApiRequest{
+		config.ApiUrl,
+		config.ApiKey,
+		arguments.Lang,
+		getSelectedText(),
 	}
+
+	translatedText := apiRequest(requestParams)
+	notifySend(translatedText)
+}
+
+func getInputArguments() InputArguments {
+	var arguments InputArguments
+
+	usr, getUserError := user.Current()
+
+	notifyIfErr(getUserError)
+
+	arguments.Lang = *flag.String("lang", "en-ru","Translate direction")
+	arguments.ConfigFileName = *flag.String("config", usr.HomeDir + "/.yagotranslate/config.json", "Config file name location")
+	flag.Parse()
+
+	return arguments
 }
 
 func apiRequest(requestParams TranslateApiRequest) string {
@@ -77,6 +103,12 @@ func getSelectedText() string {
 	return out.String()
 }
 
+func notifyIfErr(err error)  {
+	if err != nil {
+		notifySend(err.Error())
+	}
+}
+
 func notifySend(message string) {
 	cmdNotify := exec.Command("notify-send", "Yandex Translate", message)
 	notifyRunErr := cmdNotify.Run()
@@ -84,27 +116,4 @@ func notifySend(message string) {
 	if notifyRunErr != nil {
 		log.Fatal(notifyRunErr)
 	}
-}
-
-func main() {
-
-	usr, getUserError := user.Current()
-
-	notifyIfErr(getUserError)
-
-	lang := flag.String("lang", "en-ru","Translate direction")
-	configFileName := flag.String("config", usr.HomeDir + "/.yagotranslate/config.json", "Config file name location")
-	flag.Parse()
-
-	config := getConfig(*configFileName)
-
-	requestParams := TranslateApiRequest{
-		config.ApiUrl,
-		config.ApiKey,
-		*lang,
-		getSelectedText(),
-	}
-
-	translatedText := apiRequest(requestParams)
-	notifySend(translatedText)
 }
