@@ -10,6 +10,7 @@ import (
 	"strings"
 	"net/url"
 	"os/user"
+	"time"
 )
 
 type TranslateApiResponse struct {
@@ -63,21 +64,37 @@ func getInputArguments() InputArguments {
 }
 
 func apiRequest(requestParams TranslateApiRequest) string {
+	phraseToTranslate := url.QueryEscape(requestParams.Phrase)
+	response := httpRequestGet(requestParams.ApiUrl + "?key=" + requestParams.ApiKey + "&lang=" + requestParams.Lang + "&text=" + phraseToTranslate)
+	apiResponse := getParsedBodyResponse(&response)
+	defer response.Body.Close()
+
+	return strings.Join(apiResponse.Text, "\n")
+}
+
+func httpRequestGet(url string) http.Response {
+	timeout := time.Duration(10 * time.Second)
+	client := http.Client{
+		Timeout: timeout,
+	}
+
+	client.Get(url)
+	response, requestError := client.Get(url)
+	notifyIfErr(requestError)
+
+	return *response
+}
+
+func getParsedBodyResponse(response *http.Response) TranslateApiResponse  {
 	var apiResponse TranslateApiResponse
 
-	phraseToTranslate := url.QueryEscape(requestParams.Phrase)
-
-	resp, requestError := http.Get(requestParams.ApiUrl + "?key=" + requestParams.ApiKey + "&lang=" + requestParams.Lang + "&text=" + phraseToTranslate)
-	notifyIfErr(requestError)
-	defer resp.Body.Close()
-
-	body, ioError := ioutil.ReadAll(resp.Body)
+	body, ioError := ioutil.ReadAll(response.Body)
 	notifyIfErr(ioError)
 
 	unMarshalError := json.Unmarshal(body, &apiResponse)
 	notifyIfErr(unMarshalError)
 
-	return strings.Join(apiResponse.Text, "\n")
+	return apiResponse
 }
 
 func getConfig(fileName string) YandexConfig {
